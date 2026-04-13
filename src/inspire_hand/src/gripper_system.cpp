@@ -159,6 +159,45 @@ hardware_interface::return_type GripperSystem::read(const rclcpp::Time&, const r
 
 // --- Task 11: write() ---
 hardware_interface::return_type GripperSystem::write(const rclcpp::Time&, const rclcpp::Duration&) {
+  const auto timeout = std::chrono::milliseconds(read_timeout_ms_);
+  static auto clk = rclcpp::Clock::make_shared();
+
+  std::lock_guard<std::mutex> g(state_mu_);
+  for (auto& j : joints_) {
+    if (std::isnan(j.pos_cmd)) continue;
+
+    const double tgt_m = std::clamp(j.pos_cmd, 0.0, kStrokeMeters);
+    const uint16_t tgt_raw = meters_to_raw(tgt_m);
+
+    double eff_g = j.eff_cmd;
+    const bool use_force = !std::isnan(eff_g) && eff_g >= 50.0;
+    if (use_force) eff_g = std::min(eff_g, 1000.0);
+    else           eff_g = 0.0;
+
+    const bool pos_same = !std::isnan(j.last_pos_written) &&
+                          std::abs(j.last_pos_written - tgt_m) < 1e-4;
+    const bool eff_same = !std::isnan(j.last_eff_written) &&
+                          std::abs(j.last_eff_written - eff_g) < 1.0;
+    if (pos_same && eff_same) continue;
+
+    const uint16_t speed = static_cast<uint16_t>(std::clamp(j.default_speed, 1.0, 1000.0));
+    const double current_m = j.pos_state;
+
+    std::expected<Frame, BusError> rc;
+    if (use_force && tgt_m < current_m - 1e-4) {
+      rc = bus_.transact(make_move_catch(j.gripper_id, speed, static_cast<uint16_t>(eff_g)),
+                         timeout);
+    } else {
+      rc = bus_.transact(make_seek_pos(j.gripper_id, tgt_raw), timeout);
+    }
+    if (!rc) {
+      RCLCPP_WARN_THROTTLE(rclcpp::get_logger("inspire_hand"), *clk, 2000,
+        "write gripper %u failed (err=%d)", j.gripper_id, static_cast<int>(rc.error()));
+      continue;
+    }
+    j.last_pos_written = tgt_m;
+    j.last_eff_written = eff_g;
+  }
   return hardware_interface::return_type::OK;
 }
 
