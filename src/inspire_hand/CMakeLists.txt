@@ -58,7 +58,7 @@ install(TARGETS ${PROJECT_NAME}_plugin
 install(DIRECTORY urdf config launch DESTINATION share/${PROJECT_NAME})
 
 ament_export_include_directories(include)
-ament_export_libraries(${PROJECT_NAME}_plugin)
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_export_dependencies(
   rclcpp rclcpp_lifecycle hardware_interface pluginlib diagnostic_msgs std_msgs)
 
