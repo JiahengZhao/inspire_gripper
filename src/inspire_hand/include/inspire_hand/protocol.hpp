@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <expected>
 #include <vector>
 
 namespace inspire_hand {
@@ -27,7 +28,15 @@ struct Frame {
   std::vector<uint8_t> data;
 };
 
+enum class ParseError {
+  TooShort,
+  BadHeader,
+  BadLength,
+  BadChecksum,
+};
+
 uint8_t checksum(const uint8_t* data, std::size_t len) noexcept;
 std::vector<uint8_t> encode(const Frame& f);
+std::expected<Frame, ParseError> decode(const uint8_t* data, std::size_t len);
 
 }  // namespace inspire_hand

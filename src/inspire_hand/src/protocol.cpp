@@ -22,4 +22,25 @@ std::vector<uint8_t> encode(const Frame& f) {
   return out;
 }
 
+std::expected<Frame, ParseError> decode(const uint8_t* data, std::size_t len) {
+  if (len < 6) return std::unexpected(ParseError::TooShort);
+  if (data[0] != 0xEE || data[1] != 0x16) return std::unexpected(ParseError::BadHeader);
+  const uint8_t id = data[2];
+  const uint8_t data_len_byte = data[3];
+  if (len != static_cast<size_t>(data_len_byte) + 5u) return std::unexpected(ParseError::BadLength);
+  if (data_len_byte < 1) return std::unexpected(ParseError::BadLength);
+  const uint8_t cmd_byte = data[4];
+  const size_t payload_len = static_cast<size_t>(data_len_byte) - 1u;
+  const uint8_t recv_cs = data[4 + payload_len + 1];
+
+  auto cs = checksum(data + 2, 1 + 1 + 1 + payload_len);
+  if (cs != recv_cs) return std::unexpected(ParseError::BadChecksum);
+
+  Frame f;
+  f.id = id;
+  f.cmd = static_cast<Cmd>(cmd_byte);
+  f.data.assign(data + 5, data + 5 + payload_len);
+  return f;
+}
+
 }  // namespace inspire_hand

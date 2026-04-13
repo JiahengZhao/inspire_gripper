@@ -73,3 +73,35 @@ TEST(Encode, ErrorClrId1) {
   auto out = encode(Frame{0x01, Cmd::ErrorClr, {}});
   EXPECT_EQ(out, hex({0xEB,0x90,0x01,0x01,0x17,0x19}));
 }
+
+TEST(Decode, ParaSaveResponse) {
+  const std::vector<uint8_t> buf = {0xEE,0x16,0x01,0x02,0x01,0x01,0x05};
+  auto r = decode(buf.data(), buf.size());
+  ASSERT_TRUE(r.has_value()) << static_cast<int>(r.error());
+  EXPECT_EQ(r->id, 0x01);
+  EXPECT_EQ(r->cmd, Cmd::ParaSave);
+  ASSERT_EQ(r->data.size(), 1u);
+  EXPECT_EQ(r->data[0], 0x01);
+}
+
+TEST(Decode, ReadEgRunResponse) {
+  const std::vector<uint8_t> buf = {0xEE,0x16,0x01,0x08,0x41,0x01,0x00,0x23,0xE9,0x03,0x64,0x00,0xBE};
+  auto r = decode(buf.data(), buf.size());
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(r->id, 0x01);
+  EXPECT_EQ(r->cmd, Cmd::ReadEgRun);
+  ASSERT_EQ(r->data.size(), 7u);
+  EXPECT_EQ(r->data[0], 0x01);
+  EXPECT_EQ(r->data[1], 0x00);
+  EXPECT_EQ(r->data[2], 0x23);
+}
+
+TEST(Decode, ReadActPosResponse) {
+  const std::vector<uint8_t> buf = {0xEE,0x16,0x01,0x03,0xD9,0xF1,0x01,0xCF};
+  auto r = decode(buf.data(), buf.size());
+  ASSERT_TRUE(r.has_value());
+  EXPECT_EQ(r->cmd, Cmd::ReadActPos);
+  ASSERT_EQ(r->data.size(), 2u);
+  const uint16_t opening = static_cast<uint16_t>(r->data[0]) | (static_cast<uint16_t>(r->data[1]) << 8);
+  EXPECT_EQ(opening, 497);
+}
