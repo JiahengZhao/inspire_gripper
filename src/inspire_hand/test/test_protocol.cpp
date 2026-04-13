@@ -39,3 +39,37 @@ TEST(Cmd, ValuesMatchManual) {
   EXPECT_EQ(static_cast<uint8_t>(Cmd::SeekPos),      0x54);
   EXPECT_EQ(static_cast<uint8_t>(Cmd::ReadActPos),   0xD9);
 }
+
+namespace {
+std::vector<uint8_t> hex(std::initializer_list<uint8_t> b) { return b; }
+}
+
+TEST(Encode, ParaSaveId1) {
+  auto out = encode(Frame{0x01, Cmd::ParaSave, {}});
+  EXPECT_EQ(out, hex({0xEB,0x90,0x01,0x01,0x01,0x03}));
+}
+
+TEST(Encode, SeekPosId1Pos500) {
+  auto out = encode(Frame{0x01, Cmd::SeekPos, {0xF4, 0x01}});
+  EXPECT_EQ(out, hex({0xEB,0x90,0x01,0x03,0x54,0xF4,0x01,0x4D}));
+}
+
+TEST(Encode, MoveCatchXgId1Speed500Force100) {
+  auto out = encode(Frame{0x01, Cmd::MoveCatchXg, {0xF4,0x01,0x64,0x00}});
+  EXPECT_EQ(out, hex({0xEB,0x90,0x01,0x05,0x10,0xF4,0x01,0x64,0x00,0x6F}));
+}
+
+TEST(Encode, SetEgParaId1Max1000Min112) {
+  auto out = encode(Frame{0x01, Cmd::SetEgPara, {0xE8,0x03,0x70,0x00}});
+  EXPECT_EQ(out, hex({0xEB,0x90,0x01,0x05,0x12,0xE8,0x03,0x70,0x00,0x73}));
+}
+
+TEST(Encode, MoveStophereId1) {
+  auto out = encode(Frame{0x01, Cmd::MoveStophere, {}});
+  EXPECT_EQ(out, hex({0xEB,0x90,0x01,0x01,0x16,0x18}));
+}
+
+TEST(Encode, ErrorClrId1) {
+  auto out = encode(Frame{0x01, Cmd::ErrorClr, {}});
+  EXPECT_EQ(out, hex({0xEB,0x90,0x01,0x01,0x17,0x19}));
+}

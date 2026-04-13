@@ -28,5 +28,6 @@ struct Frame {
 };
 
 uint8_t checksum(const uint8_t* data, std::size_t len) noexcept;
+std::vector<uint8_t> encode(const Frame& f);
 
 }  // namespace inspire_hand

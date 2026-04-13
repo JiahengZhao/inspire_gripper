@@ -8,4 +8,18 @@ uint8_t checksum(const uint8_t* data, std::size_t len) noexcept {
   return static_cast<uint8_t>(sum);
 }
 
+std::vector<uint8_t> encode(const Frame& f) {
+  const uint8_t len = static_cast<uint8_t>(1 + f.data.size());
+  std::vector<uint8_t> out;
+  out.reserve(5 + f.data.size());
+  out.push_back(0xEB);
+  out.push_back(0x90);
+  out.push_back(f.id);
+  out.push_back(len);
+  out.push_back(static_cast<uint8_t>(f.cmd));
+  out.insert(out.end(), f.data.begin(), f.data.end());
+  out.push_back(checksum(out.data() + 2, out.size() - 2));
+  return out;
+}
+
 }  // namespace inspire_hand
