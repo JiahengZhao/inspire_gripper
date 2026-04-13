@@ -59,8 +59,10 @@ public:
   bool allow_set_id() const noexcept { return allow_set_id_; }
   int read_timeout_ms() const noexcept { return read_timeout_ms_; }
 
-  static constexpr double kStrokeMeters = 0.070;
-  static constexpr uint16_t kMaxRaw     = 1000;
+  // URDF joint 0 rad = gripper fully open (matches raw 1000).
+  // URDF joint kJointMaxRad = gripper fully closed (matches raw 0).
+  static constexpr double kJointMaxRad = 0.8663;
+  static constexpr uint16_t kMaxRaw    = 1000;
 
 private:
   std::vector<JointState> joints_;
@@ -76,11 +78,11 @@ private:
   void start_services();
   void stop_services();
 
-  double raw_to_meters(uint16_t raw) const {
-    return (static_cast<double>(raw) / kMaxRaw) * kStrokeMeters;
+  double raw_to_joint(uint16_t raw) const {
+    return kJointMaxRad * (1.0 - static_cast<double>(raw) / kMaxRaw);
   }
-  uint16_t meters_to_raw(double m) const {
-    double r = (m / kStrokeMeters) * kMaxRaw;
+  uint16_t joint_to_raw(double rad) const {
+    double r = kMaxRaw * (1.0 - rad / kJointMaxRad);
     if (r < 0.0) return 0;
     if (r > kMaxRaw) return kMaxRaw;
     return static_cast<uint16_t>(r + 0.5);

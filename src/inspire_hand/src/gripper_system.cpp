@@ -97,7 +97,7 @@ CallbackReturn GripperSystem::on_activate(const rclcpp_lifecycle::State&) {
     if (resp && resp->data.size() == 2) {
       const uint16_t raw = static_cast<uint16_t>(resp->data[0]) |
                            (static_cast<uint16_t>(resp->data[1]) << 8);
-      j.pos_state = raw_to_meters(raw);
+      j.pos_state = raw_to_joint(raw);
     }
     j.pos_cmd          = j.pos_state;
     j.eff_cmd          = static_cast<double>(default_force_threshold_g_);
@@ -146,12 +146,12 @@ hardware_interface::return_type GripperSystem::read(const rclcpp::Time&, const r
                              (static_cast<uint16_t>(resp->data[1]) << 8);
     const uint16_t force   = static_cast<uint16_t>(resp->data[2]) |
                              (static_cast<uint16_t>(resp->data[3]) << 8);
-    const double pos_m = raw_to_meters(opening);
+    const double pos_rad = raw_to_joint(opening);
     const auto dt = std::chrono::duration_cast<std::chrono::duration<double>>(now - j.last_read_time).count();
-    j.vel_state      = (dt > 1e-3) ? (pos_m - j.last_pos_state) / dt : 0.0;
-    j.last_pos_state = pos_m;
+    j.vel_state      = (dt > 1e-3) ? (pos_rad - j.last_pos_state) / dt : 0.0;
+    j.last_pos_state = pos_rad;
     j.last_read_time = now;
-    j.pos_state      = pos_m;
+    j.pos_state      = pos_rad;
     j.eff_state      = static_cast<double>(force);
   }
   return hardware_interface::return_type::OK;
@@ -166,8 +166,8 @@ hardware_interface::return_type GripperSystem::write(const rclcpp::Time&, const 
   for (auto& j : joints_) {
     if (std::isnan(j.pos_cmd)) continue;
 
-    const double tgt_m = std::clamp(j.pos_cmd, 0.0, kStrokeMeters);
-    const uint16_t tgt_raw = meters_to_raw(tgt_m);
+    const double tgt_rad = std::clamp(j.pos_cmd, 0.0, kJointMaxRad);
+    const uint16_t tgt_raw = joint_to_raw(tgt_rad);
 
     double eff_g = j.eff_cmd;
     const bool use_force = !std::isnan(eff_g) && eff_g >= 50.0;
@@ -175,16 +175,16 @@ hardware_interface::return_type GripperSystem::write(const rclcpp::Time&, const 
     else           eff_g = 0.0;
 
     const bool pos_same = !std::isnan(j.last_pos_written) &&
-                          std::abs(j.last_pos_written - tgt_m) < 1e-4;
+                          std::abs(j.last_pos_written - tgt_rad) < 1e-4;
     const bool eff_same = !std::isnan(j.last_eff_written) &&
                           std::abs(j.last_eff_written - eff_g) < 1.0;
     if (pos_same && eff_same) continue;
 
     const uint16_t speed = static_cast<uint16_t>(std::clamp(j.default_speed, 1.0, 1000.0));
-    const double current_m = j.pos_state;
+    const double current_rad = j.pos_state;
 
     std::expected<Frame, BusError> rc;
-    if (use_force && tgt_m < current_m - 1e-4) {
+    if (use_force && tgt_rad > current_rad + 1e-4) {
       rc = bus_.transact(make_move_catch(j.gripper_id, speed, static_cast<uint16_t>(eff_g)),
                          timeout);
     } else {
@@ -195,7 +195,7 @@ hardware_interface::return_type GripperSystem::write(const rclcpp::Time&, const 
         "write gripper %u failed (err=%d)", j.gripper_id, static_cast<int>(rc.error()));
       continue;
     }
-    j.last_pos_written = tgt_m;
+    j.last_pos_written = tgt_rad;
     j.last_eff_written = eff_g;
   }
   return hardware_interface::return_type::OK;
