@@ -1,9 +1,9 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
-#include <vector>
 
 namespace inspire_hand {
 
-uint8_t checksum(const std::vector<uint8_t>& bytes) noexcept;
+uint8_t checksum(const uint8_t* data, std::size_t len) noexcept;
 
 }  // namespace inspire_hand

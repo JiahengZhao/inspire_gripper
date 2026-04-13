@@ -2,10 +2,10 @@
 
 namespace inspire_hand {
 
-uint8_t checksum(const std::vector<uint8_t>& bytes) noexcept {
+uint8_t checksum(const uint8_t* data, std::size_t len) noexcept {
   unsigned sum = 0;
-  for (uint8_t b : bytes) sum += b;
-  return static_cast<uint8_t>(sum & 0xFF);
+  for (std::size_t i = 0; i < len; ++i) sum += data[i];
+  return static_cast<uint8_t>(sum);
 }
 
 }  // namespace inspire_hand
