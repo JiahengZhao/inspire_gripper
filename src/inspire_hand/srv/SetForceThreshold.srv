@@ -1,1 +1,5 @@
+uint8 gripper_id
+uint16 threshold_g
 ---
+bool success
+string message

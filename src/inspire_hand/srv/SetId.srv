@@ -1,1 +1,5 @@
+uint8 gripper_id
+uint8 new_id
 ---
+bool success
+string message

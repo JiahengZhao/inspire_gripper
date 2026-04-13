@@ -1,1 +1,9 @@
+uint8 gripper_id
 ---
+bool success
+string message
+uint8 running_state
+uint8 error_code
+uint8 temperature_c
+uint16 opening_raw
+uint16 force_set_g
