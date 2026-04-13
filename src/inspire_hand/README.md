@@ -2,7 +2,7 @@
 
 ROS2 Jazzy driver for the Inspire-Robots EG2-4X2 electric gripper.
 
-Exposes a `ros2_control` `SystemInterface` plugin that speaks the Inspire custom serial protocol over USB-to-RS485. Integrates with the sibling `inspire_description` package for the gripper URDF (single-gripper, revolute 4-bar parallel).
+Exposes a `ros2_control` `SystemInterface` plugin that speaks the Inspire custom serial protocol over USB-to-RS485. Integrates with the sibling `inspire_description` package for the gripper URDF (dual-gripper, revolute 4-bar parallel, left and right instances on a single bus).
 
 ## Architecture
 
@@ -13,13 +13,13 @@ Three layers:
 
 Joint mapping: hardware raw 0..1000 (0 = closed, 1000 = fully open 70 mm) inverts to URDF joint 0..0.8663 rad (0 rad = open as modeled, 0.8663 rad = closed).
 
-Currently single-gripper. Multi-gripper support requires parameterising `inspire_description/urdf/inspire_gripper.urdf.xacro` with a link/joint prefix and adding a second `<joint>` block inside `<ros2_control>`.
+Multi-gripper support: the `inspire_description/urdf/inspire_gripper.urdf.xacro` macro accepts a `prefix` parameter (e.g. `"left_"` or `"right_"`) to namespace all links and joints. Each gripper on the bus gets a unique `gripper_id` parameter in its `<joint>` block inside `<ros2_control>`.
 
 ## Quick start
 
 1. Connect the USB-to-RS485 adapter and verify the device path, e.g. `/dev/ttyUSB0`.
 2. Ensure your user has access: `sudo usermod -aG dialout $USER` (logout/login required).
-3. Each gripper on the bus needs a unique ID (default factory ID = 1). To change, see the `set_id` service below.
+3. Each gripper on the bus needs a unique ID (factory default ID = 1 and 2 for left/right). To change, see the `set_id` service below.
 4. Build and source:
    ```bash
    colcon build --packages-select inspire_description inspire_hand --symlink-install
@@ -27,7 +27,7 @@ Currently single-gripper. Multi-gripper support requires parameterising `inspire
    ```
 5. Launch:
    ```bash
-   ros2 launch inspire_hand inspire_hand.launch.py port:=/dev/ttyUSB0
+   ros2 launch inspire_hand inspire_hand.launch.py port:=/dev/ttyUSB0 left_gripper_id:=1 right_gripper_id:=2
    ```
 
 ## Verify
@@ -36,20 +36,30 @@ Currently single-gripper. Multi-gripper support requires parameterising `inspire
 # Exported interfaces:
 ros2 control list_hardware_interfaces
 
-# Close the gripper fully with 300 g max grip force:
-ros2 action send_goal /gripper_controller/gripper_cmd \
+# Close the LEFT gripper fully with 300 g max grip force:
+ros2 action send_goal /left_gripper_controller/gripper_cmd \
   control_msgs/action/GripperCommand \
   "{command: {position: 0.8663, max_effort: 300.0}}"
 
-# Open fully:
-ros2 action send_goal /gripper_controller/gripper_cmd \
+# Open LEFT gripper fully:
+ros2 action send_goal /left_gripper_controller/gripper_cmd \
+  control_msgs/action/GripperCommand \
+  "{command: {position: 0.0, max_effort: 0.0}}"
+
+# Close the RIGHT gripper fully with 300 g max grip force:
+ros2 action send_goal /right_gripper_controller/gripper_cmd \
+  control_msgs/action/GripperCommand \
+  "{command: {position: 0.8663, max_effort: 300.0}}"
+
+# Open RIGHT gripper fully:
+ros2 action send_goal /right_gripper_controller/gripper_cmd \
   control_msgs/action/GripperCommand \
   "{command: {position: 0.0, max_effort: 0.0}}"
 
 # Watch diagnostics:
 ros2 topic echo /diagnostics
 
-# Read run state of gripper id=1:
+# Read run state of left gripper (id=1):
 ros2 service call /inspire_hand/inspire_hand_bus0/read_run_state \
   inspire_hand/srv/ReadRunState "{gripper_id: 1}"
 
@@ -78,7 +88,8 @@ All under `/inspire_hand/inspire_hand_bus0/`:
 |---|---|
 | `port` | `/dev/ttyUSB0` |
 | `baudrate` | `115200` |
-| `gripper_id` | `1` |
+| `left_gripper_id` | `1` |
+| `right_gripper_id` | `2` |
 
 ## URDF `<hardware>` parameters
 
@@ -90,31 +101,37 @@ All under `/inspire_hand/inspire_hand_bus0/`:
 | `default_force_threshold` | `500` | grams, applied on activate |
 | `allow_set_id` | `false` | must be `true` for `set_id` |
 
-Per-joint parameters:
+Per-joint parameters (one block per gripper):
 
-| Param | Default | Notes |
-|---|---|---|
-| `gripper_id` | `1` | unique on the bus |
-| `default_speed` | `500` | 1..1000 |
+| Joint name | Param | Default | Notes |
+|---|---|---|---|
+| `left_gripper_joint1` | `gripper_id` | `1` | unique on the bus |
+| `left_gripper_joint1` | `default_speed` | `500` | 1..1000 |
+| `right_gripper_joint1` | `gripper_id` | `2` | unique on the bus |
+| `right_gripper_joint1` | `default_speed` | `500` | 1..1000 |
 
 ## Manual smoke test checklist
 
 Run with hardware attached:
 
-- [ ] `ros2 launch inspire_hand inspire_hand.launch.py` starts cleanly; no "Failed to open" in logs.
-- [ ] `ros2 control list_hardware_interfaces` shows 2 command interfaces (`gripper_joint1/position`, `gripper_joint1/effort`) and 3 state interfaces (`gripper_joint1/position`, `.../velocity`, `.../effort`).
-- [ ] Closing action `position=0.8663, max_effort=300` moves the gripper and the action server reports succeeded.
-- [ ] Opening action `position=0.0, max_effort=0` reopens it fully.
-- [ ] `ros2 topic echo /diagnostics` publishes an `inspire_hand/gripper_1` status at ~2 Hz with level OK.
-- [ ] `read_run_state` returns a plausible temperature and opening.
+- [ ] `ros2 launch inspire_hand inspire_hand.launch.py port:=/dev/ttyUSB0 left_gripper_id:=1 right_gripper_id:=2` starts cleanly; no "Failed to open" in logs.
+- [ ] `ros2 control list_hardware_interfaces` shows 4 command interfaces (`left_gripper_joint1/position`, `left_gripper_joint1/effort`, `right_gripper_joint1/position`, `right_gripper_joint1/effort`) and 6 state interfaces (position/velocity/effort for each joint).
+- [ ] Closing left gripper: action to `/left_gripper_controller/gripper_cmd` with `position=0.8663, max_effort=300` moves only the left gripper; action server reports succeeded.
+- [ ] Opening left gripper: action with `position=0.0, max_effort=0` reopens it fully.
+- [ ] Closing right gripper: action to `/right_gripper_controller/gripper_cmd` with `position=0.8663, max_effort=300` moves only the right gripper independently.
+- [ ] Opening right gripper: action with `position=0.0, max_effort=0` reopens it fully.
+- [ ] Both grippers can be commanded simultaneously without interference.
+- [ ] `ros2 topic echo /diagnostics` publishes an `inspire_hand/gripper_1` and `inspire_hand/gripper_2` status at ~2 Hz with level OK.
+- [ ] `read_run_state` returns a plausible temperature and opening for each gripper ID.
 - [ ] `stop` halts a moving gripper immediately.
 
 ## Troubleshooting
 
 - **Failed to open port**: check `ls -l /dev/ttyUSB0`, dialout group membership.
-- **All reads time out**: confirm baud (factory 115200), A+/B- wiring, and gripper ID. Try the `read_run_state` service directly.
+- **All reads time out**: confirm baud (factory 115200), A+/B- wiring, and gripper IDs. Try the `read_run_state` service directly.
 - **Fault stuck on**: bit 1 (over-temp) self-clears below 60 °C; others clear via `clear_fault`. Persistent faults indicate hardware failure.
 - **Gripper moves opposite direction**: the URDF↔hardware inversion is by design (raw 1000 = open = joint 0 rad). Match your action goal positions to the URDF joint limits.
+- **ID conflicts**: both grippers must have unique IDs on the RS485 bus. Use `set_id` service with `allow_set_id:=true` to reassign.
 
 ## Tests
 
@@ -132,4 +149,4 @@ colcon test --packages-select inspire_hand --ctest-args -R test_integration \
   --event-handlers console_direct+
 ```
 
-Requires the physical gripper on `$INSPIRE_HAND_PORT` (default `/dev/ttyUSB0`) with ID 1.
+Requires the physical gripper on `$INSPIRE_HAND_PORT` (default `/dev/ttyUSB0`) with IDs 1 and 2.

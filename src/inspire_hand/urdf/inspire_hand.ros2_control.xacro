@@ -6,13 +6,30 @@
   <xacro:arg name="read_timeout_ms"         default="30"/>
   <xacro:arg name="default_force_threshold" default="500"/>
   <xacro:arg name="allow_set_id"            default="false"/>
-  <xacro:arg name="gripper_id"              default="1"/>
+  <xacro:arg name="left_gripper_id"         default="1"/>
+  <xacro:arg name="right_gripper_id"        default="2"/>
 
-  <!-- Reuse the description-only gripper macro. -->
   <xacro:include filename="$(find inspire_description)/urdf/inspire_gripper.urdf.xacro"/>
 
   <link name="world"/>
-  <xacro:gripper parent_link="world"/>
+
+  <!-- Left gripper base, 20 cm to the left of world. -->
+  <link name="left_base_link"/>
+  <joint name="world_to_left" type="fixed">
+    <parent link="world"/>
+    <child link="left_base_link"/>
+    <origin xyz="0 0.1 0" rpy="0 0 0"/>
+  </joint>
+  <xacro:gripper parent_link="left_base_link" prefix="left_"/>
+
+  <!-- Right gripper base, 20 cm to the right of world. -->
+  <link name="right_base_link"/>
+  <joint name="world_to_right" type="fixed">
+    <parent link="world"/>
+    <child link="right_base_link"/>
+    <origin xyz="0 -0.1 0" rpy="0 0 0"/>
+  </joint>
+  <xacro:gripper parent_link="right_base_link" prefix="right_"/>
 
   <ros2_control name="inspire_hand_bus0" type="system">
     <hardware>
@@ -24,14 +41,18 @@
       <param name="allow_set_id">$(arg allow_set_id)</param>
     </hardware>
 
-    <!--
-      Only gripper_joint1 is driven; gripper_joint2/3/4 are <mimic> followers.
-      For multi-gripper setups, the inspire_description macro needs a prefix
-      parameter to namespace links/joints; then repeat this <joint> block with
-      a unique gripper_id.
-    -->
-    <joint name="gripper_joint1">
-      <param name="gripper_id">$(arg gripper_id)</param>
+    <joint name="left_gripper_joint1">
+      <param name="gripper_id">$(arg left_gripper_id)</param>
+      <param name="default_speed">500</param>
+      <command_interface name="position"/>
+      <command_interface name="effort"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+      <state_interface name="effort"/>
+    </joint>
+
+    <joint name="right_gripper_joint1">
+      <param name="gripper_id">$(arg right_gripper_id)</param>
       <param name="default_speed">500</param>
       <command_interface name="position"/>
       <command_interface name="effort"/>

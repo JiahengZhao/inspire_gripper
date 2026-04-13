@@ -5,11 +5,20 @@ controller_manager:
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
 
-    gripper_controller:
+    left_gripper_controller:
       type: parallel_gripper_action_controller/GripperActionController
 
-gripper_controller:
+    right_gripper_controller:
+      type: parallel_gripper_action_controller/GripperActionController
+
+left_gripper_controller:
   ros__parameters:
-    joint: gripper_joint1
+    joint: left_gripper_joint1
+    max_effort: 500.0
+    max_velocity: 1.0
+
+right_gripper_controller:
+  ros__parameters:
+    joint: right_gripper_joint1
     max_effort: 500.0
     max_velocity: 1.0
