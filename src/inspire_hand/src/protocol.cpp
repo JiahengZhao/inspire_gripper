@@ -43,4 +43,39 @@ std::expected<Frame, ParseError> decode(const uint8_t* data, std::size_t len) {
   return f;
 }
 
+namespace {
+std::vector<uint8_t> le16(uint16_t v) {
+  return {static_cast<uint8_t>(v & 0xFF), static_cast<uint8_t>((v >> 8) & 0xFF)};
+}
+}  // namespace
+
+Frame make_seek_pos(uint8_t id, uint16_t pos) {
+  return Frame{id, Cmd::SeekPos, le16(pos)};
+}
+Frame make_move_catch(uint8_t id, uint16_t speed, uint16_t force_g) {
+  auto d = le16(speed); auto f = le16(force_g); d.insert(d.end(), f.begin(), f.end());
+  return Frame{id, Cmd::MoveCatchXg, d};
+}
+Frame make_move_catch2(uint8_t id, uint16_t speed, uint16_t force_g) {
+  auto d = le16(speed); auto f = le16(force_g); d.insert(d.end(), f.begin(), f.end());
+  return Frame{id, Cmd::MoveCatch2Xg, d};
+}
+Frame make_move_release(uint8_t id, uint16_t speed) {
+  return Frame{id, Cmd::MoveRelease, le16(speed)};
+}
+Frame make_set_eg_para(uint8_t id, uint16_t max_open, uint16_t min_open) {
+  auto d = le16(max_open); auto mn = le16(min_open); d.insert(d.end(), mn.begin(), mn.end());
+  return Frame{id, Cmd::SetEgPara, d};
+}
+Frame make_read_eg_para(uint8_t id)  { return Frame{id, Cmd::ReadEgPara,  {}}; }
+Frame make_read_act_pos(uint8_t id)  { return Frame{id, Cmd::ReadActPos,  {}}; }
+Frame make_read_eg_state(uint8_t id) { return Frame{id, Cmd::ReadEgState, {}}; }
+Frame make_read_eg_run(uint8_t id)   { return Frame{id, Cmd::ReadEgRun,   {}}; }
+Frame make_stop(uint8_t id)          { return Frame{id, Cmd::MoveStophere,{}}; }
+Frame make_clear_fault(uint8_t id)   { return Frame{id, Cmd::ErrorClr,    {}}; }
+Frame make_para_save(uint8_t id)     { return Frame{id, Cmd::ParaSave,    {}}; }
+Frame make_para_id_set(uint8_t id, uint8_t new_id) {
+  return Frame{id, Cmd::ParaIdSet, {new_id}};
+}
+
 }  // namespace inspire_hand
