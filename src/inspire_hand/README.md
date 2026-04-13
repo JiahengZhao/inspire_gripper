@@ -62,17 +62,17 @@ ros2 action send_goal /right_gripper_controller/gripper_cmd \
 ros2 topic echo /diagnostics
 
 # Read run state of left gripper (id=1):
-ros2 service call /inspire_hand/inspire_hand_bus0/read_run_state \
+ros2 service call /inspire_hand/read_run_state \
   inspire_hand/srv/ReadRunState "{gripper_id: 1}"
 
 # Emergency stop:
-ros2 service call /inspire_hand/inspire_hand_bus0/stop \
+ros2 service call /inspire_hand/stop \
   inspire_hand/srv/Stop "{gripper_id: 1}"
 ```
 
 ## Services
 
-All under `/inspire_hand/inspire_hand_bus0/`:
+All under `/inspire_hand/`:
 
 | Service | Purpose |
 |---|---|
