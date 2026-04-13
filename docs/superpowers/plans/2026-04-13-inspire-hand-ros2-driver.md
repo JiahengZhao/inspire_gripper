@@ -135,7 +135,7 @@ Write `src/inspire_hand/package.xml`:
   <depend>std_msgs</depend>
 
   <exec_depend>controller_manager</exec_depend>
-  <exec_depend>parallel_gripper_action_controller</exec_depend>
+  <exec_depend>parallel_gripper_controller</exec_depend>
   <exec_depend>joint_state_broadcaster</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>xacro</exec_depend>
