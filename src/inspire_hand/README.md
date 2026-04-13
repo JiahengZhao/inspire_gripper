@@ -11,7 +11,9 @@ Three layers:
 - `serial_bus` — Linux termios RS485 I/O. Mutex-guarded `transact(Frame, timeout)` with ≥ 5 ms inter-command gap.
 - `gripper_system` — the plugin. Owns one `SerialBus` and one or more `JointState`s. Hosts an internal `rclcpp::Node` for services and diagnostics on its own executor thread.
 
-Joint mapping: hardware raw 0..1000 (0 = closed, 1000 = fully open 70 mm) inverts to URDF joint 0..0.8663 rad (0 rad = open as modeled, 0.8663 rad = closed).
+Joint mapping: hardware raw 0..1000 (0 = closed, 1000 = fully open 70 mm) inverts to URDF joint 0..0.8663 rad (0 rad = open as modeled, 0.8663 rad = closed). Action commands use the URDF value — `position: 0.0` opens, `position: 0.8663` closes, linear in between.
+
+Controllers are `parallel_gripper_action_controller/GripperActionController`, which expose `control_msgs/action/ParallelGripperCommand`. The goal's `command` field is a `sensor_msgs/JointState`, so `name`, `position`, and `effort` are parallel arrays — use a single-element array with the joint name.
 
 Multi-gripper support: the `inspire_description/urdf/inspire_gripper.urdf.xacro` macro accepts a `prefix` parameter (e.g. `"left_"` or `"right_"`) to namespace all links and joints. Each gripper on the bus gets a unique `gripper_id` parameter in its `<joint>` block inside `<ros2_control>`.
 
@@ -38,23 +40,23 @@ ros2 control list_hardware_interfaces
 
 # Close the LEFT gripper fully with 300 g max grip force:
 ros2 action send_goal /left_gripper_controller/gripper_cmd \
-  control_msgs/action/GripperCommand \
-  "{command: {position: 0.8663, max_effort: 300.0}}"
+  control_msgs/action/ParallelGripperCommand \
+  "{command: {name: ['left_gripper_joint1'], position: [0.8663], effort: [300.0]}}"
 
 # Open LEFT gripper fully:
 ros2 action send_goal /left_gripper_controller/gripper_cmd \
-  control_msgs/action/GripperCommand \
-  "{command: {position: 0.0, max_effort: 0.0}}"
+  control_msgs/action/ParallelGripperCommand \
+  "{command: {name: ['left_gripper_joint1'], position: [0.0], effort: [0.0]}}"
 
 # Close the RIGHT gripper fully with 300 g max grip force:
 ros2 action send_goal /right_gripper_controller/gripper_cmd \
-  control_msgs/action/GripperCommand \
-  "{command: {position: 0.8663, max_effort: 300.0}}"
+  control_msgs/action/ParallelGripperCommand \
+  "{command: {name: ['right_gripper_joint1'], position: [0.8663], effort: [300.0]}}"
 
 # Open RIGHT gripper fully:
 ros2 action send_goal /right_gripper_controller/gripper_cmd \
-  control_msgs/action/GripperCommand \
-  "{command: {position: 0.0, max_effort: 0.0}}"
+  control_msgs/action/ParallelGripperCommand \
+  "{command: {name: ['right_gripper_joint1'], position: [0.0], effort: [0.0]}}"
 
 # Watch diagnostics:
 ros2 topic echo /diagnostics
@@ -118,12 +120,12 @@ The `velocity` command interface lets a controller override the per-move speed a
 
 Run with hardware attached:
 
-- [ ] `ros2 launch inspire_hand inspire_hand.launch.py port:=/dev/ttyUSB0 left_gripper_id:=1 right_gripper_id:=2` starts cleanly; no "Failed to open" in logs.
+- [x] `ros2 launch inspire_hand inspire_hand.launch.py port:=/dev/ttyUSB0 left_gripper_id:=1 right_gripper_id:=2` starts cleanly; no "Failed to open" in logs.
 - [ ] `ros2 control list_hardware_interfaces` shows 6 command interfaces (`left_gripper_joint1/position`, `left_gripper_joint1/effort`, `left_gripper_joint1/velocity`, `right_gripper_joint1/position`, `right_gripper_joint1/effort`, `right_gripper_joint1/velocity`) and 6 state interfaces (position/velocity/effort for each joint).
-- [ ] Closing left gripper: action to `/left_gripper_controller/gripper_cmd` with `position=0.8663, max_effort=300` moves only the left gripper; action server reports succeeded.
-- [ ] Opening left gripper: action with `position=0.0, max_effort=0` reopens it fully.
-- [ ] Closing right gripper: action to `/right_gripper_controller/gripper_cmd` with `position=0.8663, max_effort=300` moves only the right gripper independently.
-- [ ] Opening right gripper: action with `position=0.0, max_effort=0` reopens it fully.
+- [ ] Closing left gripper: `ParallelGripperCommand` to `/left_gripper_controller/gripper_cmd` with `position=[0.8663], effort=[300.0]` moves only the left gripper; action server reports succeeded.
+- [ ] Opening left gripper: action with `position=[0.0], effort=[0.0]` reopens it fully.
+- [ ] Closing right gripper: `ParallelGripperCommand` to `/right_gripper_controller/gripper_cmd` with `position=[0.8663], effort=[300.0]` moves only the right gripper independently.
+- [ ] Opening right gripper: action with `position=[0.0], effort=[0.0]` reopens it fully.
 - [ ] Both grippers can be commanded simultaneously without interference.
 - [ ] `ros2 topic echo /diagnostics` publishes an `inspire_hand/gripper_1` and `inspire_hand/gripper_2` status at ~2 Hz with level OK.
 - [ ] `read_run_state` returns a plausible temperature and opening for each gripper ID.
