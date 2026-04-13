@@ -132,7 +132,9 @@ std::expected<Frame, BusError> SerialBus::transact(const Frame& req,
     }
   }
   if (decoded->id != req.id) return std::unexpected(BusError::IdMismatch);
-  if (decoded->data.size() == 1 && decoded->data[0] == 0x55) {
+  // Only write commands return a 1-byte ack (0x01 ok / 0x55 fail).
+  // Read commands return multi-byte payloads; never apply this check to them.
+  if (is_write_cmd(req.cmd) && decoded->data.size() == 1 && decoded->data[0] == 0x55) {
     return std::unexpected(BusError::ResponseFlag);
   }
   return *decoded;

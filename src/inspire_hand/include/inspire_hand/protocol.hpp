@@ -28,6 +28,10 @@ struct Frame {
   std::vector<uint8_t> data;
 };
 
+// Returns true for commands whose response is a 1-byte ack (0x01 success, 0x55 failure).
+// Read commands return multi-byte payloads and should not be classified as write commands.
+bool is_write_cmd(Cmd c) noexcept;
+
 enum class ParseError {
   TooShort,
   BadHeader,

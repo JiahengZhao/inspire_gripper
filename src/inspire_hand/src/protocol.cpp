@@ -78,4 +78,25 @@ Frame make_para_id_set(uint8_t id, uint8_t new_id) {
   return Frame{id, Cmd::ParaIdSet, {new_id}};
 }
 
+bool is_write_cmd(Cmd c) noexcept {
+  switch (c) {
+    case Cmd::ParaSave:
+    case Cmd::ParaIdSet:
+    case Cmd::MoveCatchXg:
+    case Cmd::MoveCatch2Xg:
+    case Cmd::MoveRelease:
+    case Cmd::SetEgPara:
+    case Cmd::MoveStophere:
+    case Cmd::ErrorClr:
+    case Cmd::SeekPos:
+      return true;
+    case Cmd::ReadEgPara:
+    case Cmd::ReadEgState:
+    case Cmd::ReadEgRun:
+    case Cmd::ReadActPos:
+      return false;
+  }
+  return false;
+}
+
 }  // namespace inspire_hand
