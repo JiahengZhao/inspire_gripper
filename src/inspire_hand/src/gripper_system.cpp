@@ -124,6 +124,36 @@ CallbackReturn GripperSystem::on_cleanup(const rclcpp_lifecycle::State&) {
 
 // --- Task 10: read() ---
 hardware_interface::return_type GripperSystem::read(const rclcpp::Time&, const rclcpp::Duration&) {
+  const auto timeout = std::chrono::milliseconds(read_timeout_ms_);
+  const auto now = std::chrono::steady_clock::now();
+  static auto clk = rclcpp::Clock::make_shared();
+
+  std::lock_guard<std::mutex> g(state_mu_);
+  for (auto& j : joints_) {
+    auto resp = bus_.transact(make_read_eg_state(j.gripper_id), timeout);
+    if (!resp) {
+      RCLCPP_WARN_THROTTLE(rclcpp::get_logger("inspire_hand"), *clk, 2000,
+        "read gripper %u failed (err=%d)", j.gripper_id, static_cast<int>(resp.error()));
+      continue;
+    }
+    if (resp->data.size() < 6) {
+      RCLCPP_WARN_THROTTLE(rclcpp::get_logger("inspire_hand"), *clk, 2000,
+        "short ReadEgState response for id %u (%zu bytes)",
+        j.gripper_id, resp->data.size());
+      continue;
+    }
+    const uint16_t opening = static_cast<uint16_t>(resp->data[0]) |
+                             (static_cast<uint16_t>(resp->data[1]) << 8);
+    const uint16_t force   = static_cast<uint16_t>(resp->data[2]) |
+                             (static_cast<uint16_t>(resp->data[3]) << 8);
+    const double pos_m = raw_to_meters(opening);
+    const auto dt = std::chrono::duration_cast<std::chrono::duration<double>>(now - j.last_read_time).count();
+    j.vel_state      = (dt > 1e-3) ? (pos_m - j.last_pos_state) / dt : 0.0;
+    j.last_pos_state = pos_m;
+    j.last_read_time = now;
+    j.pos_state      = pos_m;
+    j.eff_state      = static_cast<double>(force);
+  }
   return hardware_interface::return_type::OK;
 }
 
