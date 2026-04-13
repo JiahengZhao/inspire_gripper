@@ -1,0 +1,1 @@
+namespace inspire_hand {}

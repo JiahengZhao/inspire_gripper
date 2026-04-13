@@ -1,0 +1,7 @@
+<library path="inspire_hand_plugin">
+  <class name="inspire_hand/GripperSystem"
+         type="inspire_hand::GripperSystem"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>ros2_control SystemInterface for Inspire EG2-4X2 electric grippers (RS485, custom protocol).</description>
+  </class>
+</library>
