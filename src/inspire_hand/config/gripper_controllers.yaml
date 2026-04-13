@@ -14,11 +14,33 @@ controller_manager:
 left_gripper_controller:
   ros__parameters:
     joint: left_gripper_joint1
-    max_effort: 500.0
-    max_velocity: 1.0
+    # Read all three state interfaces the hardware exposes.
+    state_interfaces: ["position", "velocity", "effort"]
+    # Tell the controller to claim these COMMAND interfaces so max_effort/velocity
+    # fields from ParallelGripperCommand action goals reach the hardware.
+    # The interface names are fully qualified: <joint>/<interface>.
+    max_effort_interface:   "left_gripper_joint1/effort"
+    max_velocity_interface: "left_gripper_joint1/velocity"
+    # Fallback values when the action goal leaves them at 0.
+    # default_effort is grams (matches hardware); default_velocity is raw 1..1000.
+    default_effort:   500.0
+    default_velocity: 500.0
+    # A physical gripper stalls at its limits or when grasping an object;
+    # treat that as success, not failure.
+    allow_stalling: true
+    goal_tolerance: 0.02
+    stall_velocity_threshold: 0.002
+    stall_timeout: 1.0
 
 right_gripper_controller:
   ros__parameters:
     joint: right_gripper_joint1
-    max_effort: 500.0
-    max_velocity: 1.0
+    state_interfaces: ["position", "velocity", "effort"]
+    max_effort_interface:   "right_gripper_joint1/effort"
+    max_velocity_interface: "right_gripper_joint1/velocity"
+    default_effort:   500.0
+    default_velocity: 500.0
+    allow_stalling: true
+    goal_tolerance: 0.02
+    stall_velocity_threshold: 0.002
+    stall_timeout: 1.0
