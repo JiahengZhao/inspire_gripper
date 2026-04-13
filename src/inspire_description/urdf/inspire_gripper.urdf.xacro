@@ -2,7 +2,7 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="gripper_robot">
 
     <!-- 定义宏 -->
-    <xacro:macro name="gripper" params="parent_link">
+    <xacro:macro name="gripper" params="parent_link prefix:=''">
 
         <!-- gripper关节上下限 (0 = open as-modeled, positive closes) -->
         <xacro:property name="joint_lower_bound" value="0" />
@@ -11,7 +11,7 @@
         <xacro:property name="joint_velocity" value="1.0" />
 
         <!-- gripper -->
-        <link name="gripper_base_link">
+        <link name="${prefix}gripper_base_link">
             <inertial>
                 <origin xyz="-2.6792E-06 1.4343E-05 -0.040955" rpy="0 0 0" />
                 <mass value="0.075349" />
@@ -33,14 +33,14 @@
                 </geometry>
             </collision>
         </link>
-        
-        <joint name="gripper_base_joint" type="fixed">
+
+        <joint name="${prefix}gripper_base_joint" type="fixed">
             <origin xyz="0 0 0.008" rpy="0 0 0" />
             <parent link="${parent_link}" />
-            <child link="gripper_base_link" />
+            <child link="${prefix}gripper_base_link" />
         </joint>
-        
-        <link name="gripper_Link1">
+
+        <link name="${prefix}gripper_Link1">
             <inertial>
                 <origin xyz="0.0001 0.0085832 0.013664" rpy="0 0 0" />
                 <mass value="0.0024857" />
@@ -62,19 +62,19 @@
                 </geometry>
             </collision>
         </link>
-        
+
         <!-- Driven joint for the 4-bar parallel gripper mechanism.
              Positive rotation about +X closes the jaws (Link1 rotates toward vertical). -->
-        <joint name="gripper_joint1" type="revolute">
+        <joint name="${prefix}gripper_joint1" type="revolute">
             <origin xyz="0 -0.04 0.09" rpy="0.8663 0 0" />
-            <parent link="gripper_base_link" />
-            <child link="gripper_Link1" />
+            <parent link="${prefix}gripper_base_link" />
+            <child link="${prefix}gripper_Link1" />
             <axis xyz="-1 0 0" />
             <limit lower="${joint_lower_bound}" upper="${joint_upper_bound}"
                    effort="${joint_effort}" velocity="${joint_velocity}" />
         </joint>
-        
-        <link name="gripper_Link2">
+
+        <link name="${prefix}gripper_Link2">
             <inertial>
                 <origin xyz="9.9997E-05 0.011846 0.011367" rpy="0 0 0" />
                 <mass value="0.0044927" />
@@ -96,19 +96,19 @@
                 </geometry>
             </collision>
         </link>
-        
+
         <!-- Follower joint: mirrors joint1 to keep Link2 (fingertip) parallel to the base. -->
-        <joint name="gripper_joint2" type="revolute">
+        <joint name="${prefix}gripper_joint2" type="revolute">
             <origin xyz="0 0.022341 0.035565" rpy="-0.8663 0 0" />
-            <parent link="gripper_Link1" />
-            <child link="gripper_Link2" />
+            <parent link="${prefix}gripper_Link1" />
+            <child link="${prefix}gripper_Link2" />
             <axis xyz="-1 0 0" />
             <limit lower="${-joint_upper_bound}" upper="${-joint_lower_bound}"
                    effort="${joint_effort}" velocity="${joint_velocity}" />
-            <mimic joint="gripper_joint1" multiplier="-1.0" offset="0.0" />
+            <mimic joint="${prefix}gripper_joint1" multiplier="-1.0" offset="0.0" />
         </joint>
-        
-        <link name="gripper_Link3">
+
+        <link name="${prefix}gripper_Link3">
             <inertial>
                 <origin xyz="0.0001 -0.0085832 0.013664" rpy="0 0 0" />
                 <mass value="0.0024857" />
@@ -130,19 +130,19 @@
                 </geometry>
             </collision>
         </link>
-        
+
         <!-- Mirrored driven joint: closes together with joint1 on the opposite side. -->
-        <joint name="gripper_joint3" type="revolute">
+        <joint name="${prefix}gripper_joint3" type="revolute">
             <origin xyz="0 0.04 0.09" rpy="-0.8663 0 0" />
-            <parent link="gripper_base_link" />
-            <child link="gripper_Link3" />
+            <parent link="${prefix}gripper_base_link" />
+            <child link="${prefix}gripper_Link3" />
             <axis xyz="-1 0 0" />
             <limit lower="${-joint_upper_bound}" upper="${-joint_lower_bound}"
                    effort="${joint_effort}" velocity="${joint_velocity}" />
-            <mimic joint="gripper_joint1" multiplier="-1.0" offset="0.0" />
+            <mimic joint="${prefix}gripper_joint1" multiplier="-1.0" offset="0.0" />
         </joint>
-        
-        <link name="gripper_Link4">
+
+        <link name="${prefix}gripper_Link4">
             <inertial>
                 <origin xyz="9.9999E-05 -0.011846 0.011367" rpy="0 0 0" />
                 <mass value="0.0044926" />
@@ -164,25 +164,25 @@
                 </geometry>
             </collision>
         </link>
-        
+
         <!-- Follower joint: mirrors joint3 to keep Link4 (fingertip) parallel to the base. -->
-        <joint name="gripper_joint4" type="revolute">
+        <joint name="${prefix}gripper_joint4" type="revolute">
             <origin xyz="0 -0.022341 0.035565" rpy="0.8663 0 0" />
-            <parent link="gripper_Link3" />
-            <child link="gripper_Link4" />
+            <parent link="${prefix}gripper_Link3" />
+            <child link="${prefix}gripper_Link4" />
             <axis xyz="-1 0 0" />
             <limit lower="${joint_lower_bound}" upper="${joint_upper_bound}"
                    effort="${joint_effort}" velocity="${joint_velocity}" />
-            <mimic joint="gripper_joint1" multiplier="1.0" offset="0.0" />
+            <mimic joint="${prefix}gripper_joint1" multiplier="1.0" offset="0.0" />
         </joint>
-        
-        <!-- gripper tip virtual link (TCP), 0.1522 m along +Z from the gripper base. -->
-        <link name="gripper_tip_link"/>
 
-        <joint name="gripper_tip_joint" type="fixed">
+        <!-- gripper tip virtual link (TCP), 0.1522 m along +Z from the gripper base. -->
+        <link name="${prefix}gripper_tip_link"/>
+
+        <joint name="${prefix}gripper_tip_joint" type="fixed">
             <origin xyz="0 0 0.1522" rpy="0 0 0" />
-            <parent link="gripper_base_link" />
-            <child link="gripper_tip_link" />
+            <parent link="${prefix}gripper_base_link" />
+            <child link="${prefix}gripper_tip_link" />
         </joint>
     </xacro:macro>
 
