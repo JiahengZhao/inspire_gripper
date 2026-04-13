@@ -4,3 +4,10 @@ log/
 *.swp
 .cache/
 compile_commands.json
+
+# Claude Code
+.claude/
+.claude-code/
+CLAUDE.md
+CLAUDE.local.md
+.claude-*.log
