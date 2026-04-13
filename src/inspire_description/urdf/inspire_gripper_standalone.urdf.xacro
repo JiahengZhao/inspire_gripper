@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="inspire_gripper_standalone">
+
+    <!-- Include the gripper macro -->
+    <xacro:include filename="$(find inspire_description)/urdf/inspire_gripper.urdf.xacro"/>
+    
+    <!-- Create a world link for standalone display -->
+    <link name="world"/>
+    
+    <!-- Instantiate the gripper macro with world as parent -->
+    <xacro:gripper parent_link="world"/>
+
+</robot>
