@@ -105,3 +105,23 @@ TEST(Decode, ReadActPosResponse) {
   const uint16_t opening = static_cast<uint16_t>(r->data[0]) | (static_cast<uint16_t>(r->data[1]) << 8);
   EXPECT_EQ(opening, 497);
 }
+
+TEST(Decode, RejectsShort) {
+  const std::vector<uint8_t> buf = {0xEE,0x16,0x01};
+  EXPECT_EQ(decode(buf.data(), buf.size()).error(), ParseError::TooShort);
+}
+
+TEST(Decode, RejectsBadHeader) {
+  const std::vector<uint8_t> buf = {0xEB,0x90,0x01,0x02,0x01,0x01,0x05};
+  EXPECT_EQ(decode(buf.data(), buf.size()).error(), ParseError::BadHeader);
+}
+
+TEST(Decode, RejectsBadLength) {
+  const std::vector<uint8_t> buf = {0xEE,0x16,0x01,0x05,0x01,0x01,0x05};
+  EXPECT_EQ(decode(buf.data(), buf.size()).error(), ParseError::BadLength);
+}
+
+TEST(Decode, RejectsBadChecksum) {
+  const std::vector<uint8_t> buf = {0xEE,0x16,0x01,0x02,0x01,0x01,0xFF};
+  EXPECT_EQ(decode(buf.data(), buf.size()).error(), ParseError::BadChecksum);
+}
