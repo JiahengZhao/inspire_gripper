@@ -144,17 +144,27 @@ hardware_interface::return_type GripperSystem::read(const rclcpp::Time&, const r
         j.gripper_id, resp->data.size());
       continue;
     }
-    const uint16_t opening = static_cast<uint16_t>(resp->data[0]) |
-                             (static_cast<uint16_t>(resp->data[1]) << 8);
-    const uint16_t force   = static_cast<uint16_t>(resp->data[2]) |
-                             (static_cast<uint16_t>(resp->data[3]) << 8);
+    // Firmware reports opening and force as signed int16, not unsigned:
+    // when the gripper is mechanically stalled past full close, the encoder
+    // can report a small negative value (e.g. -3 → 0xFFFD = 65533 if misread).
+    // Decode as int16 then clamp to the documented [0, kMaxRaw] / [0, +inf] range.
+    const int16_t opening_signed = static_cast<int16_t>(
+        static_cast<uint16_t>(resp->data[0]) |
+        (static_cast<uint16_t>(resp->data[1]) << 8));
+    const int16_t force_signed = static_cast<int16_t>(
+        static_cast<uint16_t>(resp->data[2]) |
+        (static_cast<uint16_t>(resp->data[3]) << 8));
+    const uint16_t opening = opening_signed < 0 ? 0
+        : (opening_signed > static_cast<int16_t>(kMaxRaw) ? kMaxRaw
+           : static_cast<uint16_t>(opening_signed));
+    const double force_g = force_signed < 0 ? 0.0 : static_cast<double>(force_signed);
     const double pos_rad = raw_to_joint(opening);
     const auto dt = std::chrono::duration_cast<std::chrono::duration<double>>(now - j.last_read_time).count();
     j.vel_state      = (dt > 1e-3) ? (pos_rad - j.last_pos_state) / dt : 0.0;
     j.last_pos_state = pos_rad;
     j.last_read_time = now;
     j.pos_state      = pos_rad;
-    j.eff_state      = static_cast<double>(force);
+    j.eff_state      = force_g;
   }
   return hardware_interface::return_type::OK;
 }
