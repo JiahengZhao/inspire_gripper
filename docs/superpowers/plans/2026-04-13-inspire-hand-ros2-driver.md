@@ -530,7 +530,7 @@ std::vector<uint8_t> encode(const Frame& f) {
   out.push_back(static_cast<uint8_t>(f.cmd));
   out.insert(out.end(), f.data.begin(), f.data.end());
   // Checksum is over [id, len, cmd, data...] — i.e. out[2..] at this point.
-  out.push_back(checksum(std::span<const uint8_t>(out).subspan(2)));
+  out.push_back(checksum(out.data() + 2, out.size() - 2));
   return out;
 }
 ```
@@ -560,7 +560,7 @@ Append to `test/test_protocol.cpp`:
 ```cpp
 TEST(Decode, ParaSaveResponse) {
   const std::vector<uint8_t> buf = {0xEE,0x16,0x01,0x02,0x01,0x01,0x05};
-  auto r = decode(buf);
+  auto r = decode(buf.data(), buf.size());
   ASSERT_TRUE(r.has_value()) << static_cast<int>(r.error());
   EXPECT_EQ(r->id, 0x01);
   EXPECT_EQ(r->cmd, Cmd::ParaSave);
@@ -571,7 +571,7 @@ TEST(Decode, ParaSaveResponse) {
 TEST(Decode, ReadEgRunResponse) {
   // Manual §2.4.11 example: EE 16 01 08 41 01 00 23 E9 03 64 00 BD
   const std::vector<uint8_t> buf = {0xEE,0x16,0x01,0x08,0x41,0x01,0x00,0x23,0xE9,0x03,0x64,0x00,0xBD};
-  auto r = decode(buf);
+  auto r = decode(buf.data(), buf.size());
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->id, 0x01);
   EXPECT_EQ(r->cmd, Cmd::ReadEgRun);
@@ -584,7 +584,7 @@ TEST(Decode, ReadEgRunResponse) {
 TEST(Decode, ReadActPosResponse) {
   // EE 16 01 03 D9 F1 01 CF  -> opening 0x01F1 = 497
   const std::vector<uint8_t> buf = {0xEE,0x16,0x01,0x03,0xD9,0xF1,0x01,0xCF};
-  auto r = decode(buf);
+  auto r = decode(buf.data(), buf.size());
   ASSERT_TRUE(r.has_value());
   EXPECT_EQ(r->cmd, Cmd::ReadActPos);
   ASSERT_EQ(r->data.size(), 2u);
@@ -604,6 +604,7 @@ Expected: `decode`, `expected` undeclared.
 Add to `include/inspire_hand/protocol.hpp` (above encode):
 ```cpp
 #include <expected>
+#include <cstddef>
 
 enum class ParseError {
   TooShort,
@@ -612,31 +613,31 @@ enum class ParseError {
   BadChecksum,
 };
 
-std::expected<Frame, ParseError> decode(std::span<const uint8_t> buf);
+std::expected<Frame, ParseError> decode(const uint8_t* data, std::size_t len);
 ```
 
 Add to `src/protocol.cpp`:
 ```cpp
-std::expected<Frame, ParseError> decode(std::span<const uint8_t> buf) {
-  if (buf.size() < 6) return std::unexpected(ParseError::TooShort);
-  if (buf[0] != 0xEE || buf[1] != 0x16) return std::unexpected(ParseError::BadHeader);
-  const uint8_t id   = buf[2];
-  const uint8_t len  = buf[3];
-  // total frame length = len + 5 (header 2 + id 1 + len 1 + checksum 1)
-  if (buf.size() != static_cast<size_t>(len) + 5u) return std::unexpected(ParseError::BadLength);
-  if (len < 1) return std::unexpected(ParseError::BadLength);
-  const uint8_t cmd_byte = buf[4];
-  const size_t data_len = static_cast<size_t>(len) - 1u;
-  const uint8_t recv_cs = buf[4 + data_len + 1];
+std::expected<Frame, ParseError> decode(const uint8_t* data, std::size_t len) {
+  if (len < 6) return std::unexpected(ParseError::TooShort);
+  if (data[0] != 0xEE || data[1] != 0x16) return std::unexpected(ParseError::BadHeader);
+  const uint8_t id       = data[2];
+  const uint8_t data_len_byte = data[3];
+  // total frame length = data_len_byte + 5 (header 2 + id 1 + len 1 + checksum 1)
+  if (len != static_cast<size_t>(data_len_byte) + 5u) return std::unexpected(ParseError::BadLength);
+  if (data_len_byte < 1) return std::unexpected(ParseError::BadLength);
+  const uint8_t cmd_byte = data[4];
+  const size_t payload_len = static_cast<size_t>(data_len_byte) - 1u;
+  const uint8_t recv_cs = data[4 + payload_len + 1];
 
-  // Checksum covers id, len, cmd, data...
-  auto cs = checksum(buf.subspan(2, 1 + 1 + 1 + data_len));
+  // Checksum covers id, data_len_byte, cmd, payload...
+  auto cs = checksum(data + 2, 1 + 1 + 1 + payload_len);
   if (cs != recv_cs) return std::unexpected(ParseError::BadChecksum);
 
   Frame f;
   f.id = id;
   f.cmd = static_cast<Cmd>(cmd_byte);
-  f.data.assign(buf.begin() + 5, buf.begin() + 5 + data_len);
+  f.data.assign(data + 5, data + 5 + payload_len);
   return f;
 }
 ```
@@ -666,24 +667,24 @@ Append to `test/test_protocol.cpp`:
 ```cpp
 TEST(Decode, RejectsShort) {
   const std::vector<uint8_t> buf = {0xEE,0x16,0x01};
-  EXPECT_EQ(decode(buf).error(), ParseError::TooShort);
+  EXPECT_EQ(decode(buf.data(), buf.size()).error(), ParseError::TooShort);
 }
 
 TEST(Decode, RejectsBadHeader) {
   const std::vector<uint8_t> buf = {0xEB,0x90,0x01,0x02,0x01,0x01,0x05};
-  EXPECT_EQ(decode(buf).error(), ParseError::BadHeader);
+  EXPECT_EQ(decode(buf.data(), buf.size()).error(), ParseError::BadHeader);
 }
 
 TEST(Decode, RejectsBadLength) {
   // length byte claims 5 but buffer has data for 2
   const std::vector<uint8_t> buf = {0xEE,0x16,0x01,0x05,0x01,0x01,0x05};
-  EXPECT_EQ(decode(buf).error(), ParseError::BadLength);
+  EXPECT_EQ(decode(buf.data(), buf.size()).error(), ParseError::BadLength);
 }
 
 TEST(Decode, RejectsBadChecksum) {
   // Valid frame but last byte mangled
   const std::vector<uint8_t> buf = {0xEE,0x16,0x01,0x02,0x01,0x01,0xFF};
-  EXPECT_EQ(decode(buf).error(), ParseError::BadChecksum);
+  EXPECT_EQ(decode(buf.data(), buf.size()).error(), ParseError::BadChecksum);
 }
 ```
 
@@ -841,7 +842,6 @@ Replace `include/inspire_hand/serial_bus.hpp`:
 #include <chrono>
 #include <expected>
 #include <mutex>
-#include <span>
 #include <string>
 
 #include "inspire_hand/protocol.hpp"
@@ -1045,7 +1045,7 @@ std::expected<Frame, BusError> SerialBus::transact(const Frame& req,
     if (n > 0) rx.insert(rx.end(), buf, buf + n);
   }
 
-  auto decoded = decode(std::span<const uint8_t>(rx).subspan(0, rx[3] + 5u));
+  auto decoded = decode(rx.data(), rx[3] + 5u);
   if (!decoded) {
     switch (decoded.error()) {
       case ParseError::BadChecksum: return std::unexpected(BusError::Checksum);
