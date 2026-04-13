@@ -1,0 +1,15 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 50
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    gripper_controller:
+      type: parallel_gripper_action_controller/GripperActionController
+
+gripper_controller:
+  ros__parameters:
+    joint: gripper_joint1
+    max_effort: 500.0
+    max_velocity: 1.0
