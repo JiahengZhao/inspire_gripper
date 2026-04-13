@@ -76,6 +76,7 @@ std::vector<hardware_interface::CommandInterface> GripperSystem::export_command_
     const auto& name = info_.joints[i].name;
     out.emplace_back(name, "position", &joints_[i].pos_cmd);
     out.emplace_back(name, "effort",   &joints_[i].eff_cmd);
+    out.emplace_back(name, "velocity", &joints_[i].vel_cmd);
   }
   return out;
 }
@@ -103,6 +104,7 @@ CallbackReturn GripperSystem::on_activate(const rclcpp_lifecycle::State&) {
     j.eff_cmd          = static_cast<double>(default_force_threshold_g_);
     j.last_pos_written = std::numeric_limits<double>::quiet_NaN();
     j.last_eff_written = std::numeric_limits<double>::quiet_NaN();
+    j.last_vel_written = std::numeric_limits<double>::quiet_NaN();
     j.last_read_time   = std::chrono::steady_clock::now();
     j.last_pos_state   = j.pos_state;
   }
@@ -174,13 +176,19 @@ hardware_interface::return_type GripperSystem::write(const rclcpp::Time&, const 
     if (use_force) eff_g = std::min(eff_g, 1000.0);
     else           eff_g = 0.0;
 
+    // Effective speed: runtime command if valid, else URDF default.
+    double spd = j.vel_cmd;
+    if (std::isnan(spd) || spd <= 0.0) spd = j.default_speed;
+    spd = std::clamp(spd, 1.0, 1000.0);
+    const uint16_t speed = static_cast<uint16_t>(spd);
+
     const bool pos_same = !std::isnan(j.last_pos_written) &&
                           std::abs(j.last_pos_written - tgt_rad) < 1e-4;
     const bool eff_same = !std::isnan(j.last_eff_written) &&
                           std::abs(j.last_eff_written - eff_g) < 1.0;
-    if (pos_same && eff_same) continue;
-
-    const uint16_t speed = static_cast<uint16_t>(std::clamp(j.default_speed, 1.0, 1000.0));
+    const bool vel_same = !std::isnan(j.last_vel_written) &&
+                          std::abs(j.last_vel_written - spd) < 1.0;
+    if (pos_same && eff_same && vel_same) continue;
     const double current_rad = j.pos_state;
 
     std::expected<Frame, BusError> rc;
@@ -197,6 +205,7 @@ hardware_interface::return_type GripperSystem::write(const rclcpp::Time&, const 
     }
     j.last_pos_written = tgt_rad;
     j.last_eff_written = eff_g;
+    j.last_vel_written = spd;
   }
   return hardware_interface::return_type::OK;
 }

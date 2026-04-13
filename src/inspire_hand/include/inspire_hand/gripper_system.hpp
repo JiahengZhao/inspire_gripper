@@ -25,11 +25,13 @@ struct JointState {
   double default_speed{500.0};
   double pos_cmd{std::numeric_limits<double>::quiet_NaN()};
   double eff_cmd{std::numeric_limits<double>::quiet_NaN()};
+  double vel_cmd{std::numeric_limits<double>::quiet_NaN()};   // raw 1..1000; NaN = use default_speed
   double pos_state{0.0};
   double vel_state{0.0};
   double eff_state{0.0};
   double last_pos_written{std::numeric_limits<double>::quiet_NaN()};
   double last_eff_written{std::numeric_limits<double>::quiet_NaN()};
+  double last_vel_written{std::numeric_limits<double>::quiet_NaN()};
   std::chrono::steady_clock::time_point last_read_time{};
   double last_pos_state{0.0};
 };

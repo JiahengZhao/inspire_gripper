@@ -110,12 +110,16 @@ Per-joint parameters (one block per gripper):
 | `right_gripper_joint1` | `gripper_id` | `2` | unique on the bus |
 | `right_gripper_joint1` | `default_speed` | `500` | 1..1000 |
 
+### Velocity override
+
+The `velocity` command interface lets a controller override the per-move speed at runtime. Units are the hardware's raw 1..1000 (not rad/s — the gripper's internal speed control doesn't map linearly). Leave it NaN or ≤ 0 to fall back to the URDF `default_speed` per-joint parameter. Note that only `MoveCatchXg` (closing with force threshold) uses the commanded speed on the wire; `SeekPos` uses its own internal speed.
+
 ## Manual smoke test checklist
 
 Run with hardware attached:
 
 - [ ] `ros2 launch inspire_hand inspire_hand.launch.py port:=/dev/ttyUSB0 left_gripper_id:=1 right_gripper_id:=2` starts cleanly; no "Failed to open" in logs.
-- [ ] `ros2 control list_hardware_interfaces` shows 4 command interfaces (`left_gripper_joint1/position`, `left_gripper_joint1/effort`, `right_gripper_joint1/position`, `right_gripper_joint1/effort`) and 6 state interfaces (position/velocity/effort for each joint).
+- [ ] `ros2 control list_hardware_interfaces` shows 6 command interfaces (`left_gripper_joint1/position`, `left_gripper_joint1/effort`, `left_gripper_joint1/velocity`, `right_gripper_joint1/position`, `right_gripper_joint1/effort`, `right_gripper_joint1/velocity`) and 6 state interfaces (position/velocity/effort for each joint).
 - [ ] Closing left gripper: action to `/left_gripper_controller/gripper_cmd` with `position=0.8663, max_effort=300` moves only the left gripper; action server reports succeeded.
 - [ ] Opening left gripper: action with `position=0.0, max_effort=0` reopens it fully.
 - [ ] Closing right gripper: action to `/right_gripper_controller/gripper_cmd` with `position=0.8663, max_effort=300` moves only the right gripper independently.
