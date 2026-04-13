@@ -201,8 +201,6 @@ hardware_interface::return_type GripperSystem::write(const rclcpp::Time&, const 
   return hardware_interface::return_type::OK;
 }
 
-void GripperSystem::start_services() { /* Task 13 */ }
-void GripperSystem::stop_services()  { /* Task 13 */ }
 
 }  // namespace inspire_hand
 
