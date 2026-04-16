@@ -1,0 +1,6 @@
+# left_gripper is a single-joint (joints-only) group — no IK solver required.
+# MoveIt uses GripperCommand action directly via moveit_simple_controller_manager.
+left_gripper:
+  kinematics_solver: ""
+  kinematics_solver_search_resolution: 0.005
+  kinematics_solver_timeout: 0.005

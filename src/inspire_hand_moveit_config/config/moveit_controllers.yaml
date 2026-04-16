@@ -1,0 +1,19 @@
+trajectory_execution:
+  allowed_execution_duration_scaling: 1.2
+  allowed_goal_duration_margin: 0.5
+  allowed_start_tolerance: 0.01
+
+moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
+
+moveit_simple_controller_manager:
+  controller_names:
+    - left_gripper_controller
+
+  # All per-controller config must be nested here, not at the top level.
+  # action_ns is relative → full action path: /left_gripper_controller/gripper_cmd
+  left_gripper_controller:
+    type: GripperCommand
+    action_ns: gripper_cmd
+    default: true
+    joints:
+      - left_gripper_joint1

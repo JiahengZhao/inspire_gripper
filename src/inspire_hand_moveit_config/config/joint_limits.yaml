@@ -1,0 +1,9 @@
+# Override / confirm joint limits for MoveIt trajectory generation.
+# These must be within (or equal to) the URDF limits.
+joint_limits:
+  left_gripper_joint1:
+    has_position_limits: true   # inherits 0..0.8663 from URDF
+    has_velocity_limits: true
+    max_velocity: 1.0           # rad/s  (hardware raw 1..1000 maps via driver)
+    has_acceleration_limits: true
+    max_acceleration: 2.0       # rad/s²
