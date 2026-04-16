@@ -17,14 +17,14 @@ left_gripper_controller:
     # A physical gripper stalls at its limits or when grasping an object;
     # treat that as success, not failure.
     allow_stalling: true
-    goal_tolerance: 0.02
-    stall_velocity_threshold: 0.002
-    stall_timeout: 1.0
+    goal_tolerance: 0.05
+    stall_velocity_threshold: 0.005
+    stall_timeout: 0.3
 
 right_gripper_controller:
   ros__parameters:
     joint: right_gripper_joint1
     allow_stalling: true
-    goal_tolerance: 0.02
-    stall_velocity_threshold: 0.002
-    stall_timeout: 1.0
+    goal_tolerance: 0.05
+    stall_velocity_threshold: 0.005
+    stall_timeout: 0.3
